@@ -1,0 +1,10 @@
+[package]
+name = "cppbind"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cppbind-macros = { version = "0.1", path = "macros" }
+
+[workspace]
+members = ["macros"]
