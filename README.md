@@ -1,10 +1,11 @@
 # cppbind
 
-This is a Rust crate to generate binding to C++ functions and methods with zero overhead. It work by generating a FFI function with a symbol matching with the C++ side. Thus, allows you to call those C++ functions and methods directly from Rust without any overhead the same as C++ call.
+This is a Rust crate to generate binding to C++ functions and methods with zero overhead. It work by generating a FFI function with a symbol matching with the C++ side. Thus, allows you to call those C++ functions and methods directly from Rust without any overhead the same as C++ call themself.
 
 ## Limitations
 
 - Rust can only create a C++ object on the heap.
+- Rust cannot access an instance variable directly. You need to create a getter/setter for each variable you want to access.
 
 ## License
 
