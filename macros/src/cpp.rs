@@ -38,4 +38,5 @@ enum Declaration {
 
 mod kw {
     syn::custom_keyword!(class);
+    syn::custom_keyword!(public);
 }
