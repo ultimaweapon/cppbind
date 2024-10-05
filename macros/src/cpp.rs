@@ -27,7 +27,9 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         let name = format_ident!("new{}", i + 1, span = ctor.span);
 
         ctors.extend(quote! {
-            pub unsafe fn #name() {}
+            pub unsafe fn #name() -> ::cppbind::Ptr<Self> {
+                todo!();
+            }
         });
     }
 
