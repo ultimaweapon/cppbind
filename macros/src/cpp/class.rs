@@ -5,8 +5,8 @@ use syn::{braced, parenthesized, Ident, Token};
 
 /// C++ class declaration.
 pub struct Class {
-    name: Ident,
-    members: Vec<Member>,
+    pub name: Ident,
+    pub members: Vec<Member>,
 }
 
 impl Parse for Class {

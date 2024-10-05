@@ -7,7 +7,24 @@ mod class;
 
 /// Generates Rust code for `items`.
 pub fn render(items: Declarations) -> syn::Result<TokenStream> {
-    Ok(quote! {})
+    let mut output = TokenStream::new();
+
+    for item in items.0 {
+        match item {
+            Declaration::Class(i) => output.extend(render_class(i)?),
+        }
+    }
+
+    Ok(output)
+}
+
+fn render_class(item: Class) -> syn::Result<TokenStream> {
+    let name = item.name;
+
+    Ok(quote! {
+        #[allow(non_camel_case_types)]
+        pub struct #name([u8; 0]);
+    })
 }
 
 /// Contains C++ declarations parsed from [cpp](super::cpp) macro.
