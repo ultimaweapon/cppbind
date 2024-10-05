@@ -1,45 +1,77 @@
+use super::kw;
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
-use syn::{braced, Ident, Token};
+use syn::{braced, parenthesized, Ident, Token};
 
 /// C++ class declaration.
 pub struct Class {
-    ident: Ident,
+    name: Ident,
+    members: Vec<Member>,
 }
 
 impl Parse for Class {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         // Skip declaration.
-        input.parse::<super::kw::class>()?;
+        input.parse::<kw::class>()?;
 
         // Parse name.
-        let ident = input.call(Ident::parse_any)?;
+        let class = input.call(Ident::parse_any)?;
         let body;
 
         braced!(body in input);
 
         // Parse body.
         let mut accessibility = Accessibility::Private;
+        let mut members = Vec::new();
 
         while !body.is_empty() {
-            // Parse accessibility.
-            if body.parse::<Option<super::kw::public>>()?.is_some() {
-                body.parse::<Token![:]>()?;
-                accessibility = Accessibility::Public;
-            }
+            let l = body.lookahead1();
 
-            break;
+            if l.peek(kw::public) {
+                body.parse::<kw::public>()?;
+                body.parse::<Token![:]>()?;
+
+                accessibility = Accessibility::Public;
+            } else if l.peek(Ident) {
+                let r = body.parse::<Ident>()?;
+                let l = body.lookahead1();
+
+                if l.peek(Ident) {
+                    todo!()
+                } else if r == class {
+                    let args;
+
+                    parenthesized!(args in body);
+
+                    while !args.is_empty() {
+                        todo!()
+                    }
+
+                    body.parse::<Token![;]>()?;
+                } else {
+                    return Err(l.error());
+                }
+            } else {
+                return Err(l.error());
+            }
         }
 
         // Require ; after } to people can copy & paste C++ class.
         input.parse::<Token![;]>()?;
 
-        Ok(Self { ident })
+        Ok(Self {
+            name: class,
+            members,
+        })
     }
 }
 
 /// Accessibility of a member.
-enum Accessibility {
+#[derive(Clone, Copy)]
+pub enum Accessibility {
     Public,
     Private,
 }
+
+/// Member of a C++ class (exclude constructor and destructor).
+pub enum Member {}

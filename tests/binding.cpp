@@ -2,6 +2,10 @@
 
 class class1 {
 public:
+    class1()
+    {
+    }
+
     class1(const char *v1) : v1(v1)
     {
     }
