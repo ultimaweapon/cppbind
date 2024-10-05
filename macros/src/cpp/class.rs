@@ -31,6 +31,9 @@ impl Parse for Class {
             break;
         }
 
+        // Require ; after } to people can copy & paste C++ class.
+        input.parse::<Token![;]>()?;
+
         Ok(Self { ident })
     }
 }
