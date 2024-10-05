@@ -1,11 +1,15 @@
+use super::func::Param;
 use super::kw;
+use proc_macro2::Span;
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
 use syn::{braced, parenthesized, Ident, Token};
 
 /// C++ class declaration.
 pub struct Class {
     pub name: Ident,
+    pub ctors: Vec<Ctor>,
     pub members: Vec<Member>,
 }
 
@@ -22,6 +26,7 @@ impl Parse for Class {
 
         // Parse body.
         let mut accessibility = Accessibility::Private;
+        let mut ctors = Vec::new();
         let mut members = Vec::new();
 
         while !body.is_empty() {
@@ -43,9 +48,11 @@ impl Parse for Class {
 
                     parenthesized!(args in body);
 
-                    while !args.is_empty() {
-                        todo!()
-                    }
+                    ctors.push(Ctor {
+                        access: accessibility,
+                        params: Punctuated::parse_terminated(&args)?,
+                        span: r.span(),
+                    });
 
                     body.parse::<Token![;]>()?;
                 } else {
@@ -61,6 +68,7 @@ impl Parse for Class {
 
         Ok(Self {
             name: class,
+            ctors,
             members,
         })
     }
@@ -71,6 +79,13 @@ impl Parse for Class {
 pub enum Accessibility {
     Public,
     Private,
+}
+
+/// Constructor of a C++ class.
+pub struct Ctor {
+    pub access: Accessibility,
+    pub params: Punctuated<Param, Token![,]>,
+    pub span: Span,
 }
 
 /// Member of a C++ class (exclude constructor and destructor).

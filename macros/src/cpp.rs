@@ -1,9 +1,10 @@
 use self::class::Class;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 
 mod class;
+mod func;
 
 /// Generates Rust code for `items`.
 pub fn render(items: Declarations) -> syn::Result<TokenStream> {
@@ -19,11 +20,27 @@ pub fn render(items: Declarations) -> syn::Result<TokenStream> {
 }
 
 fn render_class(item: Class) -> syn::Result<TokenStream> {
+    // Render constructors.
+    let mut ctors = TokenStream::new();
+
+    for (i, ctor) in item.ctors.into_iter().enumerate() {
+        let name = format_ident!("new{}", i + 1, span = ctor.span);
+
+        ctors.extend(quote! {
+            pub unsafe fn #name() {}
+        });
+    }
+
+    // Compose.
     let name = item.name;
 
     Ok(quote! {
         #[allow(non_camel_case_types)]
         pub struct #name([u8; 0]);
+
+        impl #name {
+            #ctors
+        }
     })
 }
 
