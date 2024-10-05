@@ -6,8 +6,5 @@ edition = "2021"
 [dependencies]
 cppbind-macros = { version = "0.1", path = "macros" }
 
-[build-dependencies]
-cc = "1.1.24"
-
 [workspace]
-members = ["macros"]
+members = ["example", "macros"]
