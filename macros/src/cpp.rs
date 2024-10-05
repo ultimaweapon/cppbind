@@ -36,7 +36,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         #[allow(non_camel_case_types)]
-        pub struct #name([u8; 0]);
+        pub struct #name(std::marker::PhantomData<std::rc::Rc<()>>);
 
         impl #name {
             #ctors
