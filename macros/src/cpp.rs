@@ -1,7 +1,9 @@
 use self::class::Class;
+use crate::META;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
+use syn::Error;
 
 mod class;
 mod func;
@@ -20,8 +22,14 @@ pub fn render(items: Declarations) -> syn::Result<TokenStream> {
 }
 
 fn render_class(item: Class) -> syn::Result<TokenStream> {
-    // Render constructors.
+    // Get metadata.
     let class = item.name;
+    let meta = match META.get_type("_ZN7cppbind9type_infoI6class1E4sizeE") {
+        Some(v) => v,
+        None => return Err(Error::new_spanned(class, "type_info not found")),
+    };
+
+    // Render constructors.
     let mut impls = TokenStream::new();
 
     for (i, ctor) in item.ctors.into_iter().enumerate() {

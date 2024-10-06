@@ -5,6 +5,7 @@ use syn::{parse_macro_input, Error};
 
 mod cpp;
 mod meta;
+mod symbol;
 
 /// Generate binding to C++ functions and methods.
 #[proc_macro]
