@@ -4,6 +4,9 @@
 
 #include <stddef.h>
 
+#define CPPBIND_CLASS(n) \
+    template<> const size_t cppbind::type_info<n>::size = sizeof(n)
+
 namespace cppbind {
     template<typename T>
     struct type_info {

@@ -21,27 +21,32 @@ pub fn render(items: Declarations) -> syn::Result<TokenStream> {
 
 fn render_class(item: Class) -> syn::Result<TokenStream> {
     // Render constructors.
-    let mut ctors = TokenStream::new();
+    let class = item.name;
+    let mut impls = TokenStream::new();
 
     for (i, ctor) in item.ctors.into_iter().enumerate() {
         let name = format_ident!("new{}", i + 1, span = ctor.span);
 
-        ctors.extend(quote! {
-            pub unsafe fn #name() -> ::cppbind::Ptr<Self> {
-                todo!();
+        impls.extend(quote! {
+            pub unsafe fn #name(this: T) -> Self {
+                Self {
+                    mem: this,
+                    phantom: ::std::marker::PhantomData,
+                }
             }
         });
     }
 
     // Compose.
-    let name = item.name;
-
     Ok(quote! {
         #[allow(non_camel_case_types)]
-        pub struct #name(std::marker::PhantomData<std::rc::Rc<()>>);
+        pub struct #class<T> {
+            mem: T,
+            phantom: ::std::marker::PhantomData<::std::rc::Rc<()>>,
+        }
 
-        impl #name {
-            #ctors
+        impl<T: ::cppbind::Memory<Class = Self>> #class<T> {
+            #impls
         }
     })
 }

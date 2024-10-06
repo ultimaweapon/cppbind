@@ -15,5 +15,4 @@ protected:
     std::string v1;
 };
 
-template<>
-const size_t cppbind::type_info<class1>::size = sizeof(class1);
+CPPBIND_CLASS(class1);
