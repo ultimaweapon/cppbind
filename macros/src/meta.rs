@@ -1,5 +1,6 @@
 pub use self::ty::*;
 
+use crate::symbol::{Segment, Symbol, TemplateArg};
 use memmap2::Mmap;
 use object::read::archive::ArchiveFile;
 use std::collections::HashMap;
@@ -32,12 +33,34 @@ impl Metadata {
         // Parse symbols.
         for sym in symbols {
             let sym = sym.map_err(MetadataError::ReadSymbolFailed)?;
-            let sym = match std::str::from_utf8(sym.name()) {
+            let sym = match Symbol::parse(sym.name()) {
                 Ok(v) => v,
                 Err(_) => continue, // Ignore unknown symbol.
             };
 
-            types.insert(sym.to_owned(), TypeInfo::new());
+            // Check namespace.
+            let mut iter = sym.name().iter();
+            let ns = iter.next();
+
+            if !ns.is_some_and(|s| *s == Segment::Ident("cppbind".into())) {
+                continue;
+            }
+
+            // Check metadata type.
+            let ty = iter.next();
+
+            if !ty.is_some_and(|s| *s == Segment::Ident("type_info".into())) {
+                continue;
+            }
+
+            // Get class name.
+            let ty = iter.next().expect("invalid cppbind::type_info definition");
+            let class = match ty {
+                Segment::Ident(_) => panic!("invalid argument for cppbind::type_info"),
+                Segment::TemplateArg(TemplateArg::Ident(v)) => v,
+            };
+
+            types.insert(class.clone().into_owned(), TypeInfo::new());
         }
 
         Ok(Self { types })

@@ -24,7 +24,7 @@ pub fn render(items: Declarations) -> syn::Result<TokenStream> {
 fn render_class(item: Class) -> syn::Result<TokenStream> {
     // Get metadata.
     let class = item.name;
-    let meta = match META.get_type("_ZN7cppbind9type_infoI6class1E4sizeE") {
+    let meta = match META.get_type(class.to_string()) {
         Some(v) => v,
         None => return Err(Error::new_spanned(class, "type_info not found")),
     };
