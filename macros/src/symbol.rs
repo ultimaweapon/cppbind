@@ -4,6 +4,7 @@ use thiserror::Error;
 mod itanium;
 
 /// C++ symbol.
+#[derive(Debug)]
 pub struct Symbol {
     name: Vec<Segment<'static>>,
 }
@@ -25,14 +26,14 @@ impl Symbol {
 }
 
 /// Segment of a C++ name.
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Segment<'a> {
     Ident(Cow<'a, str>),
     TemplateArg(TemplateArg<'a>),
 }
 
 /// Argument of a template instantiation.
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TemplateArg<'a> {
     Ident(Cow<'a, str>),
 }
