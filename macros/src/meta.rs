@@ -33,6 +33,8 @@ impl Metadata {
 
             if mem.starts_with(b"\x7FELF") {
                 Self::parse_elf(&mut types)?;
+            } else if mem.starts_with(&0xFEEDFACFu32.to_le_bytes()) {
+                Self::parse_macho(&mut types)?;
             } else {
                 return Err(MetadataError::UnknownMember(
                     mem.iter().take(4).map(|v| *v).collect(),
@@ -49,6 +51,10 @@ impl Metadata {
 
     fn parse_elf(_: &mut HashMap<String, TypeInfo>) -> Result<(), MetadataError> {
         todo!("ELF parser")
+    }
+
+    fn parse_macho(_: &mut HashMap<String, TypeInfo>) -> Result<(), MetadataError> {
+        todo!("Mach-O parser");
     }
 }
 
