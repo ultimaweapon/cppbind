@@ -3,6 +3,9 @@ pub use self::ty::*;
 use crate::symbol::Symbol;
 use memmap2::Mmap;
 use object::read::archive::ArchiveFile;
+use object::read::elf::ElfFile64;
+use object::read::macho::MachOFile64;
+use object::{Endianness, LittleEndian, Object};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
@@ -26,15 +29,21 @@ impl Metadata {
         let mut types = HashMap::new();
 
         for (i, mem) in ar.members().enumerate() {
+            // Get member data.
             let mem = mem.map_err(|e| MetadataError::ParseMemberHeaderFailed(i, e))?;
             let mem = mem
                 .data(file.as_ref())
                 .map_err(|e| MetadataError::GetMemberDataFailed(i, e))?;
 
+            // Parse member.
             if mem.starts_with(b"\x7FELF") {
-                Self::parse_elf(&mut types)?;
+                ElfFile64::<Endianness>::parse(mem)
+                    .map_err(|e| MetadataError::ParseMemberFailed(i, e))
+                    .and_then(|m| Self::parse_obj(m, &mut types))?;
             } else if mem.starts_with(&0xFEEDFACFu32.to_le_bytes()) {
-                Self::parse_macho(&mut types)?;
+                MachOFile64::<LittleEndian>::parse(mem)
+                    .map_err(|e| MetadataError::ParseMemberFailed(i, e))
+                    .and_then(|m| Self::parse_obj(m, &mut types))?;
             } else {
                 return Err(MetadataError::UnknownMember(
                     mem.iter().take(4).map(|v| *v).collect(),
@@ -49,12 +58,11 @@ impl Metadata {
         self.types.get(name.as_ref())
     }
 
-    fn parse_elf(_: &mut HashMap<String, TypeInfo>) -> Result<(), MetadataError> {
-        todo!("ELF parser")
-    }
-
-    fn parse_macho(_: &mut HashMap<String, TypeInfo>) -> Result<(), MetadataError> {
-        todo!("Mach-O parser");
+    fn parse_obj<'a>(
+        _: impl Object<'a>,
+        _: &mut HashMap<String, TypeInfo>,
+    ) -> Result<(), MetadataError> {
+        Ok(())
     }
 }
 
@@ -78,6 +86,9 @@ pub enum MetadataError {
 
     #[error("unknown member ({0:x?})")]
     UnknownMember(Vec<u8>),
+
+    #[error("couldn't parse member #{0}")]
+    ParseMemberFailed(usize, #[source] object::read::Error),
 
     #[error("unknown symbol in cppbind namespace")]
     UnknownDefinition(Symbol),
