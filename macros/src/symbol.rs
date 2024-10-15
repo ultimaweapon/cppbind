@@ -16,11 +16,11 @@ impl Symbol {
         if mangled.starts_with(b"_Z") {
             self::itanium::parse(&mangled[2..])
         } else {
-            todo!()
+            Err(SymbolError::UnknownSymbol)
         }
     }
 
-    pub fn name(&self) -> &[Segment] {
+    pub fn name(&self) -> &[Segment<'static>] {
         &self.name
     }
 }
