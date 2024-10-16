@@ -1,6 +1,6 @@
 # cppbind
 
-This is a Rust crate to generate binding to C++ functions and methods with zero overhead. It work by generating a FFI function with a symbol matching with the C++ side. Thus, allows you to call those C++ functions and methods directly from Rust without any overhead the same as C++ call themself.
+This is a Rust crate to generate binding to C++ functions and methods with **zero overhead**. It works by generate FFI functions with symbol matching with the C++ side. Thus, allows you to call those C++ functions and methods directly from Rust without any overhead the same as C++ call themself. It also **allow you to construct a C++ object directly on Rust stack**.
 
 The goal of this crate is to allows efficient integration between Rust and C++, which mean most of the generated code will be unsafe. You need to know how the C++ code you are going to use is working otherwise you will be hit by undefined behaviors.
 

@@ -24,9 +24,26 @@ pub fn render(items: Declarations) -> syn::Result<TokenStream> {
 fn render_class(item: Class) -> syn::Result<TokenStream> {
     // Get metadata.
     let class = item.name;
-    let meta = match META.get_type(class.to_string()) {
+    let name = class.to_string();
+    let meta = match META.get_type(&name) {
         Some(v) => v,
-        None => return Err(Error::new_spanned(class, "type_info not found")),
+        None => {
+            return Err(Error::new_spanned(
+                class,
+                format_args!("cppbind::type_info<{name}> not found"),
+            ))
+        }
+    };
+
+    // Get object size.
+    let size = match meta.size {
+        Some(v) => v,
+        None => {
+            return Err(Error::new_spanned(
+                class,
+                format_args!("cppbind::type_info<{name}>::size not found"),
+            ));
+        }
     };
 
     // Render constructors.
@@ -46,6 +63,12 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
     }
 
     // Compose.
+    let mem = if name.chars().next().unwrap().is_uppercase() {
+        format_ident!("{name}Memory")
+    } else {
+        format_ident!("{name}_memory")
+    };
+
     Ok(quote! {
         #[allow(non_camel_case_types)]
         pub struct #class<T> {
@@ -55,6 +78,26 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
         impl<T: ::cppbind::Memory<Class = Self>> #class<T> {
             #impls
+        }
+
+        #[allow(non_camel_case_types)]
+        #[repr(transparent)]
+        pub struct #mem([::std::mem::MaybeUninit<u8>; #size]);
+
+        impl #mem {
+            pub const fn new() -> Self {
+                Self([const { ::std::mem::MaybeUninit::uninit() }; #size])
+            }
+        }
+
+        impl ::cppbind::Memory for &mut #mem {
+            type Class = #class<Self>;
+        }
+
+        impl Default for #mem {
+            fn default() -> Self {
+                Self::new()
+            }
         }
     })
 }

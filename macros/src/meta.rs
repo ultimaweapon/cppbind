@@ -5,7 +5,7 @@ use memmap2::Mmap;
 use object::read::archive::ArchiveFile;
 use object::read::elf::ElfFile64;
 use object::read::macho::MachOFile64;
-use object::{Endianness, LittleEndian, Object, ObjectSymbol, SymbolIndex};
+use object::{Endianness, LittleEndian, Object, ObjectSection, ObjectSymbol, SymbolIndex};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
@@ -61,7 +61,7 @@ impl Metadata {
             };
 
             if let Err(e) = r {
-                return Err(MetadataError::ParseSymbolFailed(name.into_owned(), e));
+                return Err(MetadataError::ParseObjectFailed(name.into_owned(), e));
             }
         }
 
@@ -72,55 +72,94 @@ impl Metadata {
         self.types.get(name.as_ref())
     }
 
-    fn parse_obj<'a>(&mut self, obj: impl Object<'a>) -> Result<(), SymbolError> {
+    fn parse_obj<'a>(&mut self, obj: impl Object<'a>) -> Result<(), ObjectError> {
         // Parse symbols.
         for sym in obj.symbols() {
-            use std::collections::hash_map::Entry;
+            let index = sym.index();
 
-            // Get symbol name.
-            let raw = match sym.name_bytes() {
-                Ok(v) => v,
-                Err(e) => return Err(SymbolError::GetNameFailed(sym.index(), e)),
-            };
+            self.parse_sym(&obj, sym)
+                .map_err(|e| ObjectError::ParseSymbolFailed(index, e))?;
+        }
 
-            // Parse name.
-            let addr = sym.address();
-            let size = sym.size();
-            let sym = match Symbol::parse(raw) {
-                Ok(v) => v,
-                Err(_) => continue, // Ignore unknown symbol.
-            };
+        Ok(())
+    }
 
-            // Check namespace.
-            let mut iter = sym.name().iter();
+    fn parse_sym<'a>(
+        &mut self,
+        obj: &impl Object<'a>,
+        sym: impl ObjectSymbol<'a>,
+    ) -> Result<(), SymbolError> {
+        use std::collections::hash_map::Entry;
 
-            if !iter
-                .next()
-                .is_some_and(|v| *v == Segment::Ident("cppbind".into()))
-            {
-                continue;
-            }
+        // Get symbol name.
+        let index = sym.index();
+        let raw = match sym.name_bytes() {
+            Ok(v) => v,
+            Err(e) => return Err(SymbolError::GetNameFailed(index, e)),
+        };
 
-            // Check if type_info.
-            if !iter
-                .next()
-                .is_some_and(|v| *v == Segment::Ident("type_info".into()))
-            {
-                return Err(SymbolError::UnknownCppbindSymbol);
-            }
+        // Get section index.
+        let section = match sym.section_index() {
+            Some(v) => v,
+            None => return Ok(()),
+        };
 
-            // Get class name.
-            let class = iter.next().ok_or(SymbolError::UnknownCppbindSymbol)?;
-            let class = match class {
-                Segment::TemplateArg(TemplateArg::Ident(v)) => v,
-                _ => return Err(SymbolError::UnknownCppbindSymbol),
-            };
+        // Parse name.
+        let off: usize = sym.address().try_into().unwrap();
+        let len: usize = sym.size().try_into().unwrap();
+        let sym = match Symbol::parse(raw) {
+            Ok(v) => v,
+            Err(_) => return Ok(()), // Ignore unknown symbol.
+        };
 
-            // Get TypeInfo.
-            let info = match self.types.entry(class.as_ref().to_owned()) {
-                Entry::Occupied(e) => e.into_mut(),
-                Entry::Vacant(e) => e.insert(TypeInfo::default()),
-            };
+        // Check namespace.
+        let mut iter = sym.name().iter();
+
+        if !iter
+            .next()
+            .is_some_and(|v| *v == Segment::Ident("cppbind".into()))
+        {
+            return Ok(());
+        }
+
+        // Check if type_info.
+        if !iter
+            .next()
+            .is_some_and(|v| *v == Segment::Ident("type_info".into()))
+        {
+            return Err(SymbolError::UnknownCppbindSymbol);
+        }
+
+        // Get class name.
+        let class = iter.next().ok_or(SymbolError::UnknownCppbindSymbol)?;
+        let class = match class {
+            Segment::TemplateArg(TemplateArg::Ident(v)) => v,
+            _ => return Err(SymbolError::UnknownCppbindSymbol),
+        };
+
+        // Get TypeInfo.
+        let info = match self.types.entry(class.as_ref().to_owned()) {
+            Entry::Occupied(e) => e.into_mut(),
+            Entry::Vacant(e) => e.insert(TypeInfo::default()),
+        };
+
+        // Check info type.
+        let ty = iter.next().ok_or(SymbolError::UnknownCppbindSymbol)?;
+        let section = obj
+            .section_by_index(section)
+            .map_err(|e| SymbolError::GetSectionFailed(index, e))?;
+        let section = section
+            .data()
+            .map_err(|e| SymbolError::GetSectionDataFailed(index, e))?;
+
+        if *ty == Segment::Ident("size".into()) {
+            info.size = section
+                .get(off..(off + len))
+                .map(|v| usize::from_ne_bytes(v.try_into().unwrap()))
+                .ok_or_else(|| SymbolError::GetDataFailed(index))
+                .map(Some)?;
+        } else {
+            return Err(SymbolError::UnknownCppbindSymbol);
         }
 
         Ok(())
@@ -151,8 +190,15 @@ pub enum MetadataError {
     #[error("couldn't parse {0}")]
     ParseMemberFailed(String, #[source] object::read::Error),
 
-    #[error("couldn't parse a symbol on {0}")]
-    ParseSymbolFailed(String, #[source] SymbolError),
+    #[error("couldn't parse {0}")]
+    ParseObjectFailed(String, #[source] ObjectError),
+}
+
+/// Represents an error when [`Metadata`] fails to parse an object file.
+#[derive(Debug, Error)]
+pub enum ObjectError {
+    #[error("couldn't parse a symbol #{0}")]
+    ParseSymbolFailed(SymbolIndex, #[source] SymbolError),
 }
 
 /// Represents an error when [`Metadata`] fails to parse a symbol.
@@ -163,4 +209,13 @@ pub enum SymbolError {
 
     #[error("unknown symbol on cppbind namespace")]
     UnknownCppbindSymbol,
+
+    #[error("couldn't get section for symbol #{0}")]
+    GetSectionFailed(SymbolIndex, #[source] object::read::Error),
+
+    #[error("couldn't get section data for symbol #{0}")]
+    GetSectionDataFailed(SymbolIndex, #[source] object::read::Error),
+
+    #[error("couldn't get data of symbol #{0}")]
+    GetDataFailed(SymbolIndex),
 }
