@@ -21,4 +21,36 @@ jobs:
     - name: Run tests
       run: cargo test
     - name: Run example
-      run: cargo run -p example
+      run: |
+        import json
+        import os
+        from subprocess import Popen, PIPE, run
+        import sys
+
+        with Popen(["cargo", "run", "-p", "example", "--message-format", "json-render-diagnostics"], stdout=PIPE) as proc:
+          for line in proc.stdout:
+            line = json.loads(line)
+            reason = line["reason"]
+            if reason == "build-finished":
+              if line["success"]:
+                break
+              else:
+                sys.exit(1)
+            elif reason == "build-script-executed":
+              for env in line["env"]:
+                key = env[0]
+                val = env[1]
+
+                if key == "CPPBIND_METADATA":
+                  meta = val
+
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+          print(f"meta={meta}", file=f)
+      shell: python
+      id: example
+    - name: Upload example metadata
+      uses: actions/upload-artifact@v4
+      with:
+        name: example-metadata-${{ runner.os }}-${{ runner.arch }}
+        path: ${{ steps.example.outputs.meta }}
+      if: ${{ failure() }}
