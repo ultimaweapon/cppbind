@@ -2,4 +2,5 @@
 #[derive(Default)]
 pub struct TypeInfo {
     pub size: Option<usize>,
+    pub align: Option<usize>,
 }

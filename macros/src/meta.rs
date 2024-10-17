@@ -158,6 +158,12 @@ impl Metadata {
                 .map(|v| usize::from_ne_bytes(v.try_into().unwrap()))
                 .ok_or_else(|| SymbolError::GetDataFailed(index))
                 .map(Some)?;
+        } else if *ty == Segment::Ident("align".into()) {
+            info.align = section
+                .get(off..(off + len))
+                .map(|v| usize::from_ne_bytes(v.try_into().unwrap()))
+                .ok_or_else(|| SymbolError::GetDataFailed(index))
+                .map(Some)?;
         } else {
             return Err(SymbolError::UnknownCppbindSymbol);
         }

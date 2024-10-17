@@ -1,6 +1,6 @@
 use self::class::Class;
 use crate::META;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::Error;
@@ -46,6 +46,17 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         }
     };
 
+    // Get alignment.
+    let align = match meta.align {
+        Some(v) => v,
+        None => {
+            return Err(Error::new_spanned(
+                class,
+                format_args!("cppbind::type_info<{name}>::align not found"),
+            ))
+        }
+    };
+
     // Render constructors.
     let mut impls = TokenStream::new();
 
@@ -63,6 +74,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
     }
 
     // Compose.
+    let align = Literal::usize_unsuffixed(align);
     let mem = if name.chars().next().unwrap().is_uppercase() {
         format_ident!("{name}Memory")
     } else {
@@ -81,7 +93,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         }
 
         #[allow(non_camel_case_types)]
-        #[repr(transparent)]
+        #[repr(C, align(#align))]
         pub struct #mem([::std::mem::MaybeUninit<u8>; #size]);
 
         impl #mem {
