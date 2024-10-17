@@ -12,7 +12,7 @@ fn main() {
         println!("cargo::rerun-if-changed={}", f.to_str().unwrap());
     }
 
-    b.cpp(true).compile("example");
+    b.cpp(true).std("c++14").compile("example");
 
     // Set variables required by cppbind. The CPPBIND_METADATA variable need to be a path to a
     // static library that defines class metadata with CPPBIND_CLASS you want to use on Rust side.

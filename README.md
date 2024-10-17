@@ -4,13 +4,17 @@ This is a Rust crate to generate binding to C++ functions and methods with **zer
 
 The goal of this crate is to allows efficient integration between Rust and C++, which mean most of the generated code will be unsafe. You need to know how the C++ code you are going to use is working otherwise you will be hit by undefined behaviors.
 
+## Requirements
+
+- C++11 and its toolchain.
+
 ## Limitations
 
 - Rust cannot access an instance variable directly. You need to create a getter/setter for each variable you want to access.
 
 ## Usage
 
-Copy `cppbind.hpp` on the root of this repository to your crate and create C++ files for the code you want to use on the Rust side. You still need some C++ files here even if the code you want to use living somewhere else to define type metadata required by `cppbind`. You need the following line for each C++ class you want to use on Rust side:
+Copy `cppbind.hpp` on the root of this repository to your crate and create C++ files for the code you want to use on the Rust side. You still need some C++ files here even if the code you want to use living somewhere else. You need the following line for each C++ class you want to use on Rust side:
 
 ```cpp
 #include "cppbind.hpp"
@@ -35,7 +39,7 @@ fn main() {
         println!("cargo::rerun-if-changed={}", f.to_str().unwrap());
     }
 
-    b.cpp(true).compile("example");
+    b.cpp(true).std("c++14").compile("example");
 
     // Set variables required by cppbind. The CPPBIND_METADATA variable need to be a path to a
     // static library that defines class metadata with CPPBIND_CLASS you want to use on Rust side.
@@ -56,7 +60,7 @@ fn main() {
 }
 ```
 
-See [Build Scripts](https://doc.rust-lang.org/cargo/reference/build-scripts.html) for more details about `build.rs`.
+See [Build Scripts](https://doc.rust-lang.org/cargo/reference/build-scripts.html) for more details about `build.rs`. If you are using other build system make sure you set `CPPBIND_METADATA` environment variable when invoke `rustc`. See the above example for more details.
 
 ## License
 
