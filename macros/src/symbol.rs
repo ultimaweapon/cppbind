@@ -15,6 +15,8 @@ impl Symbol {
 
         if mangled.starts_with(b"_Z") {
             self::itanium::parse(&mangled[2..])
+        } else if mangled.starts_with(b"__Z") {
+            self::itanium::parse(&mangled[3..])
         } else {
             Err(SymbolError::UnknownSymbol)
         }
