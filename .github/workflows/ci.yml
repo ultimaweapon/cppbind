@@ -32,10 +32,8 @@ jobs:
             line = json.loads(line)
             reason = line["reason"]
             if reason == "build-finished":
-              if line["success"]:
-                break
-              else:
-                sys.exit(1)
+              ok = line["success"]
+              break
             elif reason == "build-script-executed":
               for env in line["env"]:
                 key = env[0]
@@ -46,6 +44,9 @@ jobs:
 
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
           print(f"meta={meta}", file=f)
+
+        if !ok:
+          sys.exit(1)
       shell: python
       id: example
     - name: Upload example metadata
