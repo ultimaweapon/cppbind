@@ -45,7 +45,7 @@ jobs:
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
           print(f"meta={meta}", file=f)
 
-        if !ok:
+        if not ok:
           sys.exit(1)
       shell: python
       id: example
