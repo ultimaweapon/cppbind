@@ -44,6 +44,7 @@ impl<'a> Symbol<'a> {
                 Segment::Ident(v) => write!(name, "{}{}", v.len(), v).unwrap(),
                 Segment::TemplateArg(_) => todo!(),
                 Segment::Ctor => name.push_str("C1"),
+                Segment::Dtor => name.push_str("D1"),
             }
         }
 
@@ -68,6 +69,7 @@ pub enum Segment<'a> {
     Ident(Cow<'a, str>),
     TemplateArg(TemplateArg<'a>),
     Ctor,
+    Dtor,
 }
 
 /// Argument of a template instantiation.

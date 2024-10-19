@@ -63,7 +63,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
     for (i, ctor) in item.ctors.iter().enumerate() {
         let name = format_ident!("new{}", i + 1, span = ctor.span);
-        let ffi = format_ident!("{}_new{}", class, i + 1, span = Span::call_site());
+        let ffi = format_ident!("{}_ctor{}", class, i + 1, span = Span::call_site());
 
         impls.extend(quote! {
             pub unsafe fn #name(mut this: T) -> Self {
@@ -98,7 +98,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         // Render.
         let sym = Symbol::new(name, Some(Signature::new(params)));
         let sym = sym.to_itanium();
-        let name = format_ident!("{}_new{}", class, i + 1, span = Span::call_site());
+        let name = format_ident!("{}_ctor{}", class, i + 1, span = Span::call_site());
 
         externs.extend(quote! {
             unsafe extern "C-unwind" {
@@ -107,6 +107,21 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
             }
         });
     }
+
+    // Generate destructor FFI.
+    let dtor = format_ident!("{}_dtor", class, span = Span::call_site());
+    let sym = Symbol::new(
+        vec![Segment::Ident(name.as_str().into()), Segment::Dtor],
+        Some(Signature::new(vec![Type::Void])),
+    )
+    .to_itanium();
+
+    externs.extend(quote! {
+        unsafe extern "C-unwind" {
+            #[link_name = #sym]
+            fn #dtor(this: *mut (), __in_chrg: ::std::ffi::c_int);
+        }
+    });
 
     // Compose.
     let align = Literal::usize_unsuffixed(align);
@@ -118,13 +133,19 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         #[allow(non_camel_case_types)]
-        pub struct #class<T> {
+        pub struct #class<T: ::cppbind::Memory<Class = Self>> {
             mem: T,
             phantom: ::std::marker::PhantomData<::std::rc::Rc<()>>,
         }
 
         impl<T: ::cppbind::Memory<Class = Self>> #class<T> {
             #impls
+        }
+
+        impl<T: ::cppbind::Memory<Class = Self>> Drop for #class<T> {
+            fn drop(&mut self) {
+                unsafe { #dtor(self.mem.as_mut_ptr(), 0) };
+            }
         }
 
         #[allow(non_camel_case_types)]

@@ -6,6 +6,7 @@ class class1 {
 public:
     class1();
     class1(const char *v1);
+    ~class1();
 protected:
     std::string v1;
 };
@@ -17,5 +18,9 @@ class1::class1()
 }
 
 class1::class1(const char *v1) : v1(v1)
+{
+}
+
+class1::~class1()
 {
 }
