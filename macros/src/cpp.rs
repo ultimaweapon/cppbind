@@ -176,6 +176,10 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
             fn alloc() -> *mut () {
                 unsafe { ::cppbind::new(#size) }
             }
+
+            unsafe fn dealloc(this: *mut ()) {
+                ::cppbind::delete(this, #size);
+            }
         }
 
         impl ::cppbind::Memory for &mut #mem {

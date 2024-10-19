@@ -45,6 +45,7 @@ impl<'a> Symbol<'a> {
                 Segment::Ctor => n.push_str("C1"),
                 Segment::Dtor => n.push_str("D1"),
                 Segment::New => n.push_str("nw"),
+                Segment::Delete => n.push_str("dl"),
             }
         };
 
@@ -62,12 +63,17 @@ impl<'a> Symbol<'a> {
         }
 
         // Build signature.
+        fn push_type(n: &mut String, t: &Type) {
+            match t {
+                Type::Void => n.push('v'),
+                Type::Ulong => n.push('m'),
+                Type::Ptr(v) => push_type(n, &v),
+            }
+        }
+
         if let Some(s) = &self.sig {
             for p in &s.params {
-                match p {
-                    Type::Void => name.push('v'),
-                    Type::Ulong => name.push('m'),
-                }
+                push_type(&mut name, p);
             }
         }
 
@@ -90,6 +96,7 @@ pub enum Segment<'a> {
     Ctor,
     Dtor,
     New,
+    Delete,
 }
 
 /// Argument of a template instantiation.
@@ -115,6 +122,7 @@ impl Signature {
 pub enum Type {
     Void,
     Ulong,
+    Ptr(Box<Self>),
 }
 
 /// Represents an error when [`Symbol`] fails to parse from a mangled name.

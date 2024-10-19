@@ -4,11 +4,17 @@ pub use cppbind_macros::*;
 mod ffi;
 
 /// Memory of a C++ class that live on a heap.
-pub struct Heap<T>(*mut T);
+pub struct Heap<T: HeapAlloc>(*mut T);
 
 impl<T: HeapAlloc> Heap<T> {
     pub fn new() -> Self {
         Self(T::alloc().cast())
+    }
+}
+
+impl<T: HeapAlloc> Drop for Heap<T> {
+    fn drop(&mut self) {
+        unsafe { T::dealloc(self.0.cast()) };
     }
 }
 
@@ -20,8 +26,8 @@ impl<T: HeapAlloc> Memory for Heap<T> {
     }
 }
 
-unsafe impl<T: Send> Send for Heap<T> {}
-unsafe impl<T: Sync> Sync for Heap<T> {}
+unsafe impl<T: HeapAlloc + Send> Send for Heap<T> {}
+unsafe impl<T: HeapAlloc + Sync> Sync for Heap<T> {}
 
 /// Memory of a C++ class.
 pub trait Memory {
@@ -35,4 +41,5 @@ pub trait HeapAlloc {
     type Class;
 
     fn alloc() -> *mut ();
+    unsafe fn dealloc(this: *mut ());
 }
