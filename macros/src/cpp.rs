@@ -1,4 +1,5 @@
 use self::class::Class;
+use crate::symbol::{Segment, Signature, Symbol, Type};
 use crate::META;
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -62,9 +63,12 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
     for (i, ctor) in item.ctors.iter().enumerate() {
         let name = format_ident!("new{}", i + 1, span = ctor.span);
+        let ffi = format_ident!("{}_new{}", class, i + 1, span = Span::call_site());
 
         impls.extend(quote! {
-            pub unsafe fn #name(this: T) -> Self {
+            pub unsafe fn #name(mut this: T) -> Self {
+                #ffi(this.as_mut_ptr());
+
                 Self {
                     mem: this,
                     phantom: ::std::marker::PhantomData,
@@ -77,10 +81,28 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
     let mut externs = TokenStream::new();
 
     for (i, ctor) in item.ctors.iter().enumerate() {
+        // Build name.
+        let mut name = vec![Segment::Ident(name.as_str().into())];
+
+        name.push(Segment::Ctor);
+
+        // Build parameters.
+        let mut params = Vec::with_capacity(ctor.params.len());
+
+        if ctor.params.is_empty() {
+            params.push(Type::Void);
+        } else {
+            todo!("parameterized constructor");
+        }
+
+        // Render.
+        let sym = Symbol::new(name, Some(Signature::new(params)));
+        let sym = sym.to_itanium();
         let name = format_ident!("{}_new{}", class, i + 1, span = Span::call_site());
 
         externs.extend(quote! {
             unsafe extern "C-unwind" {
+                #[link_name = #sym]
                 fn #name(this: *mut ());
             }
         });
@@ -117,6 +139,10 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
         impl ::cppbind::Memory for &mut #mem {
             type Class = #class<Self>;
+
+            fn as_mut_ptr(&mut self) -> *mut () {
+                self.0.as_mut_ptr().cast()
+            }
         }
 
         impl Default for #mem {

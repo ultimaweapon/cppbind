@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::iter::Peekable;
 use std::slice::Iter;
 
-pub fn parse(mangled: &[u8]) -> Result<Symbol, SymbolError> {
+pub fn parse(mangled: &[u8]) -> Result<Symbol<'static>, SymbolError> {
     let mut name = Vec::new();
     let mut iter = mangled.iter().peekable();
 
@@ -12,7 +12,7 @@ pub fn parse(mangled: &[u8]) -> Result<Symbol, SymbolError> {
         _ => return Err(SymbolError::UnknownSymbol),
     }
 
-    Ok(Symbol { name })
+    Ok(Symbol { name, sig: None })
 }
 
 fn parse_nested_name(
