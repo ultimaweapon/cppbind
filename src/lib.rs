@@ -1,9 +1,18 @@
+pub use self::ffi::*;
 pub use cppbind_macros::*;
+
+mod ffi;
 
 /// Memory of a C++ class that live on a heap.
 pub struct Heap<T>(*mut T);
 
-impl<T: Memory> Memory for Heap<T> {
+impl<T: HeapAlloc> Heap<T> {
+    pub fn new() -> Self {
+        Self(T::alloc().cast())
+    }
+}
+
+impl<T: HeapAlloc> Memory for Heap<T> {
     type Class = T::Class;
 
     fn as_mut_ptr(&mut self) -> *mut () {
@@ -19,4 +28,11 @@ pub trait Memory {
     type Class;
 
     fn as_mut_ptr(&mut self) -> *mut ();
+}
+
+/// Provides methods to allocate/deallocate a memory for a class.
+pub trait HeapAlloc {
+    type Class;
+
+    fn alloc() -> *mut ();
 }

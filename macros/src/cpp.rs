@@ -1,5 +1,5 @@
 use self::class::Class;
-use crate::symbol::{Segment, Signature, Symbol, Type};
+use crate::symbol::{Name, Segment, Signature, Symbol, Type};
 use crate::META;
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -96,7 +96,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         }
 
         // Render.
-        let sym = Symbol::new(name, Some(Signature::new(params)));
+        let sym = Symbol::new(Name::Nested(name), Some(Signature::new(params)));
         let sym = sym.to_itanium();
         let name = format_ident!("{}_ctor{}", class, i + 1, span = Span::call_site());
 
@@ -111,7 +111,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
     // Generate destructor FFI.
     let dtor = format_ident!("{}_dtor", class, span = Span::call_site());
     let sym = Symbol::new(
-        vec![Segment::Ident(name.as_str().into()), Segment::Dtor],
+        Name::Nested(vec![Segment::Ident(name.as_str().into()), Segment::Dtor]),
         Some(Signature::new(vec![Type::Void])),
     )
     .to_itanium();
@@ -150,11 +150,31 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
 
         #[allow(non_camel_case_types)]
         #[repr(C, align(#align))]
-        pub struct #mem([::std::mem::MaybeUninit<u8>; #size]);
+        pub struct #mem {
+            data: [::std::mem::MaybeUninit<u8>; #size],
+            phantom: ::std::marker::PhantomPinned,
+        }
 
         impl #mem {
             pub const fn new() -> Self {
-                Self([const { ::std::mem::MaybeUninit::uninit() }; #size])
+                Self {
+                    data: [const { ::std::mem::MaybeUninit::uninit() }; #size],
+                    phantom: ::std::marker::PhantomPinned,
+                }
+            }
+        }
+
+        impl Default for #mem {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
+        impl ::cppbind::HeapAlloc for #mem {
+            type Class = #class<::cppbind::Heap<Self>>;
+
+            fn alloc() -> *mut () {
+                unsafe { ::cppbind::new(#size) }
             }
         }
 
@@ -162,13 +182,7 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
             type Class = #class<Self>;
 
             fn as_mut_ptr(&mut self) -> *mut () {
-                self.0.as_mut_ptr().cast()
-            }
-        }
-
-        impl Default for #mem {
-            fn default() -> Self {
-                Self::new()
+                self.data.as_mut_ptr().cast()
             }
         }
 

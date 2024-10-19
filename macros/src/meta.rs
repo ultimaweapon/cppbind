@@ -1,6 +1,6 @@
 pub use self::ty::*;
 
-use crate::symbol::{Segment, Symbol, TemplateArg};
+use crate::symbol::{Name, Segment, Symbol, TemplateArg};
 use memmap2::Mmap;
 use object::read::archive::ArchiveFile;
 use object::read::elf::ElfFile64;
@@ -113,7 +113,10 @@ impl Metadata {
         };
 
         // Check namespace.
-        let mut iter = sym.name().iter();
+        let mut iter = match sym.name() {
+            Name::Nested(v) => v.iter(),
+            _ => return Ok(()),
+        };
 
         if !iter
             .next()

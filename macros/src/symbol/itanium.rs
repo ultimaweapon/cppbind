@@ -1,37 +1,34 @@
-use super::{Segment, Symbol, SymbolError, TemplateArg};
+use super::{Name, Segment, Symbol, SymbolError, TemplateArg};
 use std::cmp::min;
 use std::iter::Peekable;
 use std::slice::Iter;
 
 pub fn parse(mangled: &[u8]) -> Result<Symbol<'static>, SymbolError> {
-    let mut name = Vec::new();
     let mut iter = mangled.iter().peekable();
-
-    match *iter.next().ok_or(SymbolError::UnknownSymbol)? {
-        b'N' => parse_nested_name(&mut name, &mut iter)?,
+    let name = match *iter.next().ok_or(SymbolError::UnknownSymbol)? {
+        b'N' => Name::Nested(parse_nested_name(&mut iter)?),
         _ => return Err(SymbolError::UnknownSymbol),
-    }
+    };
 
     Ok(Symbol { name, sig: None })
 }
 
-fn parse_nested_name(
-    segments: &mut Vec<Segment>,
-    iter: &mut Peekable<Iter<u8>>,
-) -> Result<(), SymbolError> {
+fn parse_nested_name(iter: &mut Peekable<Iter<u8>>) -> Result<Vec<Segment<'static>>, SymbolError> {
+    let mut segments = Vec::new();
+
     loop {
         let b = *iter.next().ok_or(SymbolError::UnknownSymbol)?;
 
         match b {
             b'0' => return Err(SymbolError::UnknownSymbol), // Identifier with zero length?
             b'1'..=b'9' => segments.push(Segment::Ident(parse_source_name(iter, b)?.into())),
-            b'I' => parse_template_args(segments, iter)?,
+            b'I' => parse_template_args(&mut segments, iter)?,
             b'E' => break,
             _ => return Err(SymbolError::UnknownSymbol),
         }
     }
 
-    Ok(())
+    Ok(segments)
 }
 
 fn parse_source_name(iter: &mut Peekable<Iter<u8>>, first: u8) -> Result<String, SymbolError> {

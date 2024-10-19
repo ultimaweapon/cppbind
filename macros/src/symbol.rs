@@ -6,7 +6,7 @@ mod itanium;
 /// C++ symbol.
 #[derive(Debug)]
 pub struct Symbol<'a> {
-    name: Vec<Segment<'a>>,
+    name: Name<'a>,
     sig: Option<Signature>,
 }
 
@@ -25,42 +25,61 @@ impl Symbol<'static> {
 }
 
 impl<'a> Symbol<'a> {
-    pub fn new(name: Vec<Segment<'a>>, sig: Option<Signature>) -> Self {
+    pub fn new(name: Name<'a>, sig: Option<Signature>) -> Self {
         Self { name, sig }
     }
 
-    pub fn name(&self) -> &[Segment<'a>] {
+    pub fn name(&self) -> &Name<'a> {
         &self.name
     }
 
     pub fn to_itanium(&self) -> String {
         // Build name.
-        let mut name = String::from("\u{1}_ZN");
-
-        for s in &self.name {
+        let mut name = String::from("\u{1}_Z");
+        let push_segment = |n: &mut String, s: &Segment| {
             use std::fmt::Write;
 
             match s {
-                Segment::Ident(v) => write!(name, "{}{}", v.len(), v).unwrap(),
+                Segment::Ident(v) => write!(n, "{}{}", v.len(), v).unwrap(),
                 Segment::TemplateArg(_) => todo!(),
-                Segment::Ctor => name.push_str("C1"),
-                Segment::Dtor => name.push_str("D1"),
+                Segment::Ctor => n.push_str("C1"),
+                Segment::Dtor => n.push_str("D1"),
+                Segment::New => n.push_str("nw"),
             }
-        }
+        };
 
-        name.push('E');
+        match &self.name {
+            Name::Nested(v) => {
+                name.push('N');
+
+                for s in v {
+                    push_segment(&mut name, s);
+                }
+
+                name.push('E');
+            }
+            Name::Unscoped(s) => push_segment(&mut name, s),
+        }
 
         // Build signature.
         if let Some(s) = &self.sig {
             for p in &s.params {
                 match p {
                     Type::Void => name.push('v'),
+                    Type::Ulong => name.push('m'),
                 }
             }
         }
 
         name
     }
+}
+
+/// Name of a C++ symbol.
+#[derive(Debug)]
+pub enum Name<'a> {
+    Nested(Vec<Segment<'a>>),
+    Unscoped(Segment<'a>),
 }
 
 /// Segment of a C++ name.
@@ -70,6 +89,7 @@ pub enum Segment<'a> {
     TemplateArg(TemplateArg<'a>),
     Ctor,
     Dtor,
+    New,
 }
 
 /// Argument of a template instantiation.
@@ -94,6 +114,7 @@ impl Signature {
 #[derive(Debug)]
 pub enum Type {
     Void,
+    Ulong,
 }
 
 /// Represents an error when [`Symbol`] fails to parse from a mangled name.
