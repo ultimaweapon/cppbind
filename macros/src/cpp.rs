@@ -1,6 +1,6 @@
 use self::class::Class;
 use crate::META;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::Error;
@@ -57,10 +57,10 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
         }
     };
 
-    // Render constructors.
+    // Render constructor wrappers.
     let mut impls = TokenStream::new();
 
-    for (i, ctor) in item.ctors.into_iter().enumerate() {
+    for (i, ctor) in item.ctors.iter().enumerate() {
         let name = format_ident!("new{}", i + 1, span = ctor.span);
 
         impls.extend(quote! {
@@ -69,6 +69,19 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
                     mem: this,
                     phantom: ::std::marker::PhantomData,
                 }
+            }
+        });
+    }
+
+    // Render constructor FFI.
+    let mut externs = TokenStream::new();
+
+    for (i, ctor) in item.ctors.iter().enumerate() {
+        let name = format_ident!("{}_new{}", class, i + 1, span = Span::call_site());
+
+        externs.extend(quote! {
+            unsafe extern "C-unwind" {
+                fn #name(this: *mut ());
             }
         });
     }
@@ -111,6 +124,8 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
                 Self::new()
             }
         }
+
+        #externs
     })
 }
 

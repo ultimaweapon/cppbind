@@ -11,6 +11,7 @@ The goal of this crate is to allows efficient integration between Rust and C++, 
 ## Limitations
 
 - Rust cannot access an instance variable directly. You need to create a getter/setter for each variable you want to access.
+- Inline method is not supported. That mean you cannot define a method you want to use inside a class declaration.
 
 ## Usage
 
