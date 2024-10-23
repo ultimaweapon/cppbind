@@ -14,5 +14,7 @@ cpp! {
     class class1 {
     public:
         class1();
+
+        const char *value() const;
     };
 }

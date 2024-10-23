@@ -1,3 +1,4 @@
+use crate::ty::Type;
 use std::borrow::Cow;
 use thiserror::Error;
 
@@ -67,7 +68,7 @@ impl<'a> Symbol<'a> {
             match t {
                 Type::Void => n.push('v'),
                 Type::Ulong => n.push('m'),
-                Type::Ptr(v) => push_type(n, &v),
+                Type::Ptr { c: _, t } => push_type(n, &t),
             }
         }
 
@@ -115,14 +116,6 @@ impl Signature {
     pub fn new(params: Vec<Type>) -> Self {
         Self { params }
     }
-}
-
-/// C++ type.
-#[derive(Debug)]
-pub enum Type {
-    Void,
-    Ulong,
-    Ptr(Box<Self>),
 }
 
 /// Represents an error when [`Symbol`] fails to parse from a mangled name.

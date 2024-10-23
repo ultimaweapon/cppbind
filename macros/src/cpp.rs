@@ -1,5 +1,6 @@
 use self::class::Class;
-use crate::symbol::{Name, Segment, Signature, Symbol, Type};
+use crate::symbol::{Name, Segment, Signature, Symbol};
+use crate::ty::Type;
 use crate::META;
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};

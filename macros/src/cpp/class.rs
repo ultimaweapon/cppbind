@@ -1,5 +1,6 @@
 use super::func::Param;
 use super::kw;
+use crate::ty::Type;
 use proc_macro2::Span;
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
@@ -33,10 +34,12 @@ impl Parse for Class {
             let l = body.lookahead1();
 
             if l.peek(kw::public) {
-                body.parse::<kw::public>()?;
+                body.parse::<kw::public>().unwrap();
                 body.parse::<Token![:]>()?;
 
                 accessibility = Accessibility::Public;
+            } else if l.peek(Token![const]) {
+                body.parse::<Type>()?;
             } else if l.peek(Ident) {
                 let r = body.parse::<Ident>()?;
                 let l = body.lookahead1();
