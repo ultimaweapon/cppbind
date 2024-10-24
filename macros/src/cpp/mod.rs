@@ -183,11 +183,11 @@ fn render_class(item: Class) -> syn::Result<TokenStream> {
             }
         }
 
-        impl ::cppbind::Memory for &mut #mem {
+        impl ::cppbind::Memory for ::std::pin::Pin<&mut #mem> {
             type Class = #class<Self>;
 
             fn as_mut_ptr(&mut self) -> *mut () {
-                self.data.as_mut_ptr().cast()
+                unsafe { self.data.as_mut().get_unchecked_mut().as_mut_ptr().cast() }
             }
         }
 
