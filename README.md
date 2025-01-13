@@ -6,6 +6,10 @@ The goal of this crate is to allows efficient integration between Rust and C++, 
 
 Only x86-64 Linux is supported at the moment. A PR to adds supports for other platforms is welcome!
 
+## Status
+
+Only PoC is working. You can see it in the `example` directory. I was planned to use this with Qt on [Obliteration](https://github.com/obhq/obliteration) but now we have moved to Slint so I stopped working on this. I may come back in the future when I need to use other C++ libraries.
+
 ## Requirements
 
 - C++11 and its toolchain.
